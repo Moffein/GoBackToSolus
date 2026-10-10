@@ -24,7 +24,7 @@ namespace GoBackToSolus
     [BepInPlugin("com.Moffein.GoBackToSolus", "Go Back to Solus", "1.1.0")]
     public class GoBackToSolusPlugin : BaseUnityPlugin
     {
-        /*public static List<CharacterSpawnCard> solusCards = new List<CharacterSpawnCard>
+        public static List<CharacterSpawnCard> solusCards = new List<CharacterSpawnCard>
         {
             Addressables.LoadAssetAsync<CharacterSpawnCard>("RoR2/DLC3/WorkerUnit/cscWorkerUnit.asset").WaitForCompletion(),
             Addressables.LoadAssetAsync<CharacterSpawnCard>("RoR2/DLC3/Tanker/cscTanker.asset").WaitForCompletion(),
@@ -32,7 +32,7 @@ namespace GoBackToSolus
             Addressables.LoadAssetAsync<CharacterSpawnCard>("RoR2/DLC3/DefectiveUnit/cscDefectiveUnit.asset").WaitForCompletion(),
             Addressables.LoadAssetAsync<CharacterSpawnCard>("RoR2/DLC3/ExtractorUnit/cscExtractorUnit.asset").WaitForCompletion(),
             Addressables.LoadAssetAsync<CharacterSpawnCard>("RoR2/DLC3/IronHauler/cscIronHauler.asset").WaitForCompletion()
-        };*/
+        };
 
         public static List<DirectorCardCategorySelection> allOtherDccs = new List<DirectorCardCategorySelection>
         {
@@ -90,11 +90,26 @@ namespace GoBackToSolus
             Addressables.LoadAssetAsync<DccsPool>("RoR2/DLC2/helminthroost/dpHelminthRoostMonsters.asset").WaitForCompletion()
         };
 
+        private List<string> scenesToProcess = new List<string>();
         private bool allowOnScuMaps;
+
         private void Awake()
         {
             allowOnScuMaps = Config.Bind("Settings", "Allow on SCU Maps", false, new ConfigDescription("Allow DLC3 enemies to spawn on maps with the Solus Control Unit.")).Value;
+
             RoR2Application.onLoad += RemoveRobots;
+            On.RoR2.DCCSBlender.GetBlendedDCCS += DCCSBlender_GetBlendedDCCS;
+
+            string sceneString = Config.Bind("Settings", "Manual Scene Blacklist", "", new ConfigDescription("Additional scenes to blacklist DLC3 enemies on. Use scene_list in debugtoolkit to get the internal scene names.")).Value;
+            string[] split = sceneString.Split(',');
+            foreach (string str in split)
+            {
+                var trim = str.Trim();
+                if (trim.Length > 0)
+                {
+                    scenesToProcess.Add(trim);
+                }
+            }
         }
 
         private void RemoveRobots()
@@ -111,40 +126,28 @@ namespace GoBackToSolus
                     }).ToArray();
                 }
             }
-
-            /*foreach (var dccs in allOtherDccs)
-            {
-                foreach (CharacterSpawnCard csc in solusCards)
-                {
-                    RemoveFromDccs(csc, dccs, solusCards);
-                }
-            }
-
-            if (!allowOnScuMaps)
-            {
-                foreach (var dccs in scuMapDccs)
-                {
-                    foreach (CharacterSpawnCard csc in solusCards)
-                    {
-                        RemoveFromDccs(csc, dccs, solusCards);
-                    }
-                }
-            }*/
         }
 
-        /*internal void RemoveFromDccs(CharacterSpawnCard csc, DirectorCardCategorySelection dccs, List<CharacterSpawnCard> blacklistedCards)
+        private DirectorCardCategorySelection DCCSBlender_GetBlendedDCCS(On.RoR2.DCCSBlender.orig_GetBlendedDCCS orig, DccsPool.Category dccsPoolCategory, ref Xoroshiro128Plus rng, ClassicStageInfo stageInfo, int contentSourceMixLimit, System.Collections.Generic.List<RoR2.ExpansionManagement.ExpansionDef> acceptableExpansionList)
         {
-            if (!dccs || dccs.categories == null) return;
+            var ret = orig(dccsPoolCategory, ref rng, stageInfo, contentSourceMixLimit, acceptableExpansionList);
 
-            for (int i = 0; i < dccs.categories.Length; i++)
+            SceneDef current = SceneCatalog.GetSceneDefForCurrentScene();
+            if (current && scenesToProcess.Contains(current.baseSceneName))
             {
-                Debug.Log("Cat Length Before: " + dccs.categories[i].cards.Length);
-                dccs.categories[i].cards = dccs.categories[i].cards.Where(c =>
+                if (ret != null && ret.categories != null)
                 {
-                    return !blacklistedCards.Contains(c.spawnCard);
-                }).ToArray();
-                Debug.Log("Cat Length After: " + dccs.categories[i].cards.Length);
+                    for (int i = 0; i < ret.categories.Length; i++)
+                    {
+                        if (ret.categories[i].cards != null)
+                        {
+                            ret.categories[i].cards = ret.categories[i].cards.Where(card => !(card != null && solusCards.Contains(card.spawnCard))).ToArray();
+                        }
+                    }
+                }
             }
-        }*/
+
+            return ret;
+        }
     }
 }
