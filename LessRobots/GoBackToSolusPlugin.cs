@@ -100,7 +100,7 @@ namespace GoBackToSolus
             RoR2Application.onLoad += RemoveRobots;
             On.RoR2.DCCSBlender.GetBlendedDCCS += DCCSBlender_GetBlendedDCCS;
 
-            string sceneString = Config.Bind("Settings", "Manual Scene Blacklist", "", new ConfigDescription("Additional scenes to blacklist DLC3 enemies on. Use scene_list in debugtoolkit to get the internal scene names.")).Value;
+            string sceneString = Config.Bind("Settings", "Manual Scene Blacklist", "", new ConfigDescription("Additional scenes to blacklist DLC3 enemies on, separated by commas (ex. blackbeach, golemplains). Use scene_list in debugtoolkit to get the internal scene names.")).Value;
             string[] split = sceneString.Split(',');
             foreach (string str in split)
             {
